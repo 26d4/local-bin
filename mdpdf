@@ -6,8 +6,15 @@ echo "Converting ${INNAME##*/} -> ${OUTNAME##*/}"
 
 mdhtml "$INNAME" - "${@:3}" | pandoc - -o "$OUTNAME" -f html -t latex -s\
  --pdf-engine=latexmk --pdf-engine-opt=-lualatex\
- -V 'documentclass=scrartcl' -V 'geometry=margin=1in'\
+ -V 'documentclass=scrartcl' \
  --metadata-file=<(cat <<-EOF
+	geometry:
+	  - left=1cm
+	  - right=1cm
+	  - top=1cm
+	  - bottom=1cm
+	  - includehead
+	  - includefoot
 	fontsize: 12pt
 	mainfont: DejaVu Serif
 	sansfont: DejaVu Sans
