@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+
+import sys
+import urllib.request as req
+import urllib.parse as parse
+from urllib.error import URLError, HTTPError
+import json
+from tempfile import NamedTemporaryFile
+from subprocess import call
+import os
+
+def eprint(*args, **kwargs):
+	print(*args, file=sys.stderr, **kwargs)
+
+if len(sys.argv) < 3:
+	eprint(f'Usage: {os.path.basename(sys.argv[0])} <file> <id>')
+	sys.exit(1)
+
+video_file = os.path.realpath(sys.argv[1])
+
+if not os.path.isfile(video_file):
+	eprint(video_file, 'is not a file')
+	sys.exit(2)
+
+video_root, video_ext = os.path.splitext(video_file)
+
+video_id = sys.argv[2]
+categories = ['sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'hook', 'chapter']
+categories = f"[%22{'%22,%22'.join(categories)}%22]"
+url = f"https://sponsor.ajay.app/api/skipSegments?videoID={video_id}&categories={categories}&service=youtube"
+
+ffdata = []
+
+ffmeta = ';FFMETADATA1\n'
+
+try:
+	response = req.urlopen(url)
+	data = json.loads(response.read())
+	for d in data:
+		ffdata.append({
+			'start': int(d['segment'][0] * 1000),
+			'end': int(d['segment'][1] * 1000),
+			'title': d['description'] if 'description' in d and d['description'] != '' else d['category'].capitalize()
+		})
+except HTTPError as e:
+	eprint('The server couldn\'t fulfill the request.')
+	eprint('Error code: ', e.code)
+	sys.exit(50)
+except URLError as e:
+	eprint('Failed to reach a server.')
+	eprint('Reason: ', e.reason)
+	sys.exit(51)
+
+if len(ffdata) == 0:
+	eprint('No chapters to add')
+	sys.exit(0)
+
+ffdata = sorted(ffdata, key=lambda d: d['start'])
+
+# TODO better trailing chapter, needs video duration, don't make when unnecessary and give proper length
+ffdata.append({'start': ffdata[-1]['end'], 'end': ffdata[-1]['end'], 'title': ''})
+
+for i in range(len(ffdata)-1):
+	if ffdata[i+1]['start'] - ffdata[i]['end'] > 0.1:
+		ffdata.insert(i+1, {'start': ffdata[i]['end'], 'end': ffdata[i+1]['start'], 'title': 'Video content'})
+
+for d in ffdata:
+	ffmeta += f"""[CHAPTER]
+TIMEBASE=1/1000
+START={d['start']}
+END={d['end']}
+title={d['title']}
+"""
+
+#eprint(ffmeta)
+tmp = NamedTemporaryFile(mode='w', suffix='.ffmetadata', delete=False)
+try:
+	tmp.write(ffmeta)
+	tmp.close()
+	rc = call(['ffmpeg', '-hide_banner', '-i', video_file, '-i', tmp.name, '-map_metadata', '1', '-codec', 'copy', video_root + '.sbchapter' + video_ext])
+	if rc != 0:
+		raise SystemExit(rc)
+finally:
+	os.remove(tmp.name)

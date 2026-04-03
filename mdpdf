@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+INNAME="${1:?}"
+OUTNAME="${2}"
+: "${OUTNAME:="${INNAME%.md}.pdf"}"
+echo "Converting ${INNAME##*/} -> ${OUTNAME##*/}"
+#cd "$(dirname "$(readlink -f "$INNAME")")"
+
+#pandoc "$INNAME" -o - -t html -s --variable 'maxwidth=max-content' --mathml --ascii "${@:3}" | wkhtmltopdf - "$OUTNAME"
+
+#pandoc "$INNAME" -o "${INNAME%.md}.html" -t html -s --variable 'maxwidth=unset' --mathml --ascii "${@:3}"
+#INTERNAME="${OUTNAME%.pdf}.docx"
+#pandoc "${INNAME%.md}.html" -o "$INTERNAME" -t docx --mathml
+#libreoffice --headless "-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${USER}" --convert-to pdf --outdir "$(dirname "$OUTNAME")" "$INTERNAME"
+
+#INTERNAME="$(dirname "$OUTNAME")/__$(basename "$OUTNAME" .pdf).html"
+#mdhtml "$INNAME" "$INTERNAME"
+#INTERNAME2="$(dirname "$OUTNAME")/__$(basename "$OUTNAME" .md).tex"
+#pandoc "$INTERNAME" -o "$INTERNAME2" -f html -t latex -s -V 'documentclass=scrartcl' -V 'geometry=margin=1in' -V 'fontsize=12pt' -V 'mainfont=TeX Gyre Pagella'
+#latexmk -cd -lualatex "$INTERNAME2"
+#mv -f "${INTERNAME2%.tex}.pdf" "$OUTNAME"
+#latexmk -cd -C "$INTERNAME2"
+#rm "$INTERNAME" "$INTERNAME2"
+
+mdhtml "$INNAME" - "${@:3}" | pandoc - -o "$OUTNAME" -f html -t latex -s\
+ --pdf-engine=latexmk --pdf-engine-opt=-lualatex\
+ -V 'documentclass=scrartcl' -V 'geometry=margin=1in'\
+ --metadata-file=<(cat <<-EOF
+	fontsize: 12pt
+	mainfont: DejaVu Serif
+	sansfont: DejaVu Sans
+	monofont: DejaVu Sans Mono
+	mathfont: DejaVu Math TeX Gyre
+	mainfontfallback: 
+	  - "FreeSerif:"
+	  - "NotoColorEmoji:mode=harf"
+#	mainfont: FreeSerif
+#	sansfont: FreeSans
+#	monofont: FreeMono
+#	mathfont: Asana Math
+#	mainfontfallback: 
+#	  - "NotoColorEmoji:mode=harf"
+EOF
+)
