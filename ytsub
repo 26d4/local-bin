@@ -17,23 +17,3 @@ else
 		done
 	fi
 fi
-
-#import yt_dlp
-#import sys
-#
-#if len(sys.argv) < 3:
-#	opt = {'skip_download': True, 'listsubtitles': True}
-#else:
-#	opt = {
-#		'writesubtitles': True,
-#		'writeautomaticsub': True,
-#		'skip_download': True,
-#		'subtitleslangs': sys.argv[2].split(','),
-#		'verbose': True
-#	}
-#	if len(sys.argv) >= 4:
-#		opt['subtitlesformat'] = sys.argv[3] POSTPROCESS_WHEN = ('pre_process', 'after_filter', 'video', 'before_dl', 'post_process', 'after_move', 'after_video', 'playlist')
-#		opt['postprocessors'] = [{'key': 'FFmpegSubtitlesConvertor', 'format': sys.argv[3], 'when': 'after_video'}]
-#
-#with yt_dlp.YoutubeDL(opt) as ytdl:
-#	ytdl.download(sys.argv[1])
