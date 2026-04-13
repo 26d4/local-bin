@@ -50,6 +50,10 @@ try:
 			'title': d['description'] if 'description' in d and d['description'] != '' else d['category'].capitalize()
 		})
 except HTTPError as e:
+	if e.code == 404:
+		eprint('No chapters to add')
+		sys.exit(0)
+
 	eprint('The server couldn\'t fulfill the request.')
 	eprint('Error code: ', e.code)
 	sys.exit(50)
@@ -57,10 +61,6 @@ except URLError as e:
 	eprint('Failed to reach a server.')
 	eprint('Reason: ', e.reason)
 	sys.exit(51)
-
-if len(ffdata) == 0:
-	eprint('No chapters to add')
-	sys.exit(0)
 
 ffdata = sorted(ffdata, key=lambda d: d['start'])
 
