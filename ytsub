@@ -8,7 +8,7 @@ else
 		FILENAME=$(yt-dlp --no-warnings --get-filename "$1")
 		FILENAME="${FILENAME%.*}"
 		for sub in "$FILENAME."*; do
-			if [[ "${sub##*.}" != "$3" ]] && ! ffprobe -hide_banner -show_entries stream=codec_type "$sub" 2> /dev/null | grep -E '(audio|video)' > /dev/null; then
+			if [[ "${sub##*.}" != "$3" ]] && ! ffprobe -hide_banner -show_entries stream=codec_type "$sub" 2> /dev/null | grep -qE '(audio|video)'; then
 				ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3"
 				rm "$sub"
 			else
