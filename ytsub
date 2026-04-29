@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if (( "$#" < 1)); then
+	>&2 echo "Usage: ${0##*/} <ID> [<language> [format]]"
+	exit
+fi
+
 if (( "$#" < 2 )); then
 	yt-dlp --no-warnings --skip-download --list-subs "$1"
 else
