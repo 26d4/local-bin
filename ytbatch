@@ -2,10 +2,13 @@
 
 QUEUE1=$(mktemp -t ytdl-queue1-XXXX)
 QUEUE2=$(mktemp -t ytdl-queue2-XXXX)
+QUEUE2A=$(mktemp -t ytdl-queue2a-XXXX)
+QUEUE2B=$(mktemp -t ytdl-queue2b-XXXX)
+TMUX_SESSION="${0##*/}-$$"
 
 cleanup() {
 	rm "$QUEUE1"
-	rm "$QUEUE2"
+	rm "$QUEUE2" "$QUEUE2A" "$QUEUE2B"
 }
 
 trap 'cleanup' EXIT
@@ -36,4 +39,17 @@ fi
 
 cat "$QUEUE1" | xargs -on1 yt-dlp -sf - --print-to-file '%(format_id)s %(webpage_url)s' "$QUEUE2"
 
-cat "$QUEUE2" | xargs -L1 yt-dlp -f
+if command -v tmux; then
+	N_ITEMS=$(wc -l < "$QUEUE2")
+	HALF_ITEMS=$((N_ITEMS/2))
+	head -n "$HALF_ITEMS" "$QUEUE2" > "$QUEUE2A"
+	tail -n +"$((HALF_ITEMS + 1))" "$QUEUE2" > "$QUEUE2B"
+
+	tmux new-session -d -s "$TMUX_SESSION"
+	tmux send "sh -c 'cat \"$QUEUE2A\" | xargs -L1 yt-dlp -f'" ENTER
+	tmux split-window
+	tmux send "sh -c 'cat \"$QUEUE2B\" | xargs -L1 yt-dlp -f'" ENTER
+	tmux attach
+else
+	cat "$QUEUE2" | xargs -L1 yt-dlp -f
+fi
