@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+QUEUE1=$(mktemp -t ytdl-queue1-XXXX)
+QUEUE2=$(mktemp -t ytdl-queue2-XXXX)
+
+cleanup() {
+	rm "$QUEUE1"
+	rm "$QUEUE2"
+}
+
+trap 'cleanup' EXIT
+
+trap 'break' SIGINT
+
+echo 'Copy URLs to add them, ^C to finish'
+
+prev=$(xclip -selection clipboard -o)
+while true; do
+	curr=$(xclip -selection clipboard -o)
+	if [[ "$curr" != "$prev" ]]; then
+		echo "Copied $curr"
+		yt-dlp --no-js-runtimes --no-warnings --print-to-file '%(webpage_url)s' "$QUEUE1" -f 'w*' --print 'Added %(title)s' "$curr" &
+		prev="$curr"
+	fi
+	sleep 0.25
+done
+
+trap - SIGINT
+
+wait
+
+if [[ -z "$(cat "$QUEUE1")" ]]; then
+	echo "Nothing to download"
+	exit
+fi
+
+cat "$QUEUE1" | xargs -on1 yt-dlp -sf - --print-to-file '%(format_id)s %(webpage_url)s' "$QUEUE2"
+
+cat "$QUEUE2" | xargs -L1 yt-dlp -f

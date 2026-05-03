@@ -1,0 +1,8 @@
+*
+!.gitignore
+!mdhtml
+!mdpdf
+!sbchapter
+!vidtuber-wrapper-yt-dlp
+!ytsub
+!ytbatch
