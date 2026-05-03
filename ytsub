@@ -6,11 +6,11 @@ if (( "$#" < 1)); then
 fi
 
 if (( "$#" < 2 )); then
-	yt-dlp --no-warnings --skip-download --list-subs "$1"
+	yt-dlp --ignore-config --no-warnings --skip-download --list-subs "$1"
 else
-	yt-dlp --no-warnings --skip-download --write-subs --write-auto-subs --sub-langs "$2" "$1"
+	yt-dlp --ignore-config --no-warnings --skip-download --write-subs --write-auto-subs --sub-langs "$2" "$1"
 	if (( "$#" >= 3 )); then
-		FILENAME=$(yt-dlp --no-warnings --get-filename "$1")
+		FILENAME=$(yt-dlp --ignore-config --no-warnings --get-filename "$1")
 		FILENAME="${FILENAME%.*}"
 		for sub in "$FILENAME."*; do
 			if [[ "${sub##*.}" != "$3" ]] && ! ffprobe -hide_banner -show_entries stream=codec_type "$sub" 2> /dev/null | grep -qE '(audio|video)'; then
