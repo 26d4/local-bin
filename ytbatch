@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-QUEUE1=$(mktemp -t ytdl-queue1-XXXX)
-QUEUE2=$(mktemp -t ytdl-queue2-XXXX)
-QUEUE2A=$(mktemp -t ytdl-queue2a-XXXX)
-QUEUE2B=$(mktemp -t ytdl-queue2b-XXXX)
+DIR=$(mktemp -d -t ytdl-XXXXX)
+QUEUE1="$DIR"/queue1
+QUEUE2="$DIR"/queue2
+QUEUE2A="$DIR"/queue2a
+QUEUE2B="$DIR"/queue2b
 TMUX_SESSION="${0##*/}-$$"
 
 cleanup() {
-	rm "$QUEUE1"
-	rm "$QUEUE2" "$QUEUE2A" "$QUEUE2B"
+	rm "$DIR"/*
+	rmdir "$DIR"
 }
 
 trap 'cleanup' EXIT
