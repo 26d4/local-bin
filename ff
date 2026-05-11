@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+function get_current_desktop() {
+	current_desktop=$(wmctrl -d | grep "*" | cut -f1 -d " ")
+	echo "current_desktop = $current_desktop"
+}
+
+function get_current_instance_normal() {
+	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -e 'Firefox$' | head -n1 | cut -f1 -d' ')
+	echo "current_instance = $current_instance"
+}
+function get_current_instance_private() {
+	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -ve 'Firefox$' | grep -e 'Firefox' | cut -f1 -d' ')
+	echo "current_instance = $current_instance"
+}
+function has_any_instance_private() {
+	wmctrl -lx | grep -ve 'Firefox$' | grep -qe 'Firefox'
+}
+function get_current_instance() {
+	if [[ -n "$PRIVATE" ]]; then
+		get_current_instance_private
+	else
+		get_current_instance_normal
+	fi
+}
+
+if zenity --question --text="Private mode?"; then
+	PRIVATE=1
+fi
+
+get_current_desktop
+sleep 0.1
+get_current_instance
+
+if [[ -n "$PRIVATE" ]]; then
+	if has_any_instance_private && [[ -z $current_instance ]]; then
+		firefox -private-window
+		sleep 0.4
+	fi
+	${1+firefox -private-window "$1"}
+else
+	if [[ -z $current_instance ]]; then
+		firefox -new-window ${1+"$1"}
+	else
+		firefox ${1+"$1"}
+	fi
+fi
+
+timeout=20
+while [[ -z $current_instance ]] && (( timeout > 0 )); do
+	get_current_instance
+	timeout=$((timeout-1))
+	sleep 0.1
+done
+
+(( timeout > 0 )) || exit
+
+wmctrl -i -r $current_instance -b add,maximized_vert
+wmctrl -i -r $current_instance -b add,maximized_horz
