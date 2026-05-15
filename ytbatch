@@ -13,9 +13,7 @@ trap 'cleanup' EXIT
 xclip -i -selection clipboard < /dev/null
 mkdir "$INFODIR"
 
-trap 'break' SIGINT
-
-echo 'Copy URLs to add them, ^C to finish'
+echo 'Copy URLs to add them, press f to finish, c to clear'
 
 counter=1
 prev=$(xclip -selection clipboard -o)
@@ -27,10 +25,13 @@ while true; do
 		prev="$curr"
 		counter=$((counter+1))
 	fi
-	sleep 0.2
-done
 
-trap - SIGINT
+	read -st0.2 -N1 input
+	case "$input" in
+		'f'|'F') break;;
+		'c'|'C') rm "$INFODIR"/*; counter=1; echo 'Cleared';;
+	esac
+done
 
 wait
 
