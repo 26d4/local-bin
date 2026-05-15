@@ -1,56 +1,50 @@
 #!/usr/bin/env bash
 
-DIR=$(mktemp -d -t ytdl-XXXXX)
-QUEUE1="$DIR"/queue1
+DIR=$(mktemp -d -t "${0##*/}-$$"-ytdl-XXXXX)
 QUEUE2="$DIR"/queue2
-QUEUE2A="$DIR"/queue2a
-QUEUE2B="$DIR"/queue2b
-TMUX_SESSION="${0##*/}-$$"
+INFODIR="$DIR"/info
 
 cleanup() {
-	rm "$DIR"/*
-	rmdir "$DIR"
+	rm -r "$DIR"
 }
 
 trap 'cleanup' EXIT
+
+xclip -i -selection clipboard < /dev/null
+mkdir "$INFODIR"
 
 trap 'break' SIGINT
 
 echo 'Copy URLs to add them, ^C to finish'
 
+counter=1
 prev=$(xclip -selection clipboard -o)
 while true; do
 	curr=$(xclip -selection clipboard -o)
 	if [[ "$curr" != "$prev" ]]; then
 		echo "Copied $curr"
-		yt-dlp --no-js-runtimes --no-warnings --print-to-file '%(webpage_url)s' "$QUEUE1" -f 'w*' --print 'Added %(title)s' "$curr" &
+		yt-dlp -P "$INFODIR" --print-to-file '%()j' "$INFODIR"/dl"$counter".info.json -f 'w*' --print 'Added %(title)s' "$curr" &
 		prev="$curr"
+		counter=$((counter+1))
 	fi
-	sleep 0.25
+	sleep 0.2
 done
 
 trap - SIGINT
 
 wait
 
-if [[ -z "$(cat "$QUEUE1")" ]]; then
+if [[ -z "$(ls -A "$INFODIR")" ]]; then
 	echo "Nothing to download"
 	exit
 fi
 
-cat "$QUEUE1" | xargs -on1 yt-dlp -sf - --print-to-file '%(format_id)s %(webpage_url)s' "$QUEUE2"
+for f in "$INFODIR"/*; do
+	printf '%*s\n' "$(tput cols)" | tr ' ' '-'
+	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Select format for %(title)s"
+	yt-dlp -sf - --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
+done
 
-if command -v tmux; then
-	N_ITEMS=$(wc -l < "$QUEUE2")
-	HALF_ITEMS=$((N_ITEMS/2))
-	head -n "$HALF_ITEMS" "$QUEUE2" > "$QUEUE2A"
-	tail -n +"$((HALF_ITEMS + 1))" "$QUEUE2" > "$QUEUE2B"
-
-	tmux new-session -d -s "$TMUX_SESSION"
-	tmux send "sh -c 'cat \"$QUEUE2A\" | xargs -L1 yt-dlp -f'" ENTER
-	tmux split-window
-	tmux send "sh -c 'cat \"$QUEUE2B\" | xargs -L1 yt-dlp -f'" ENTER
-	tmux attach
-else
-	cat "$QUEUE2" | xargs -L1 yt-dlp -f
-fi
+while read -r format info; do
+	yt-dlp --load-info-json "$info" -f "$format"
+done < "$QUEUE2"
