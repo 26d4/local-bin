@@ -25,7 +25,7 @@ done
 xclip -i -selection clipboard < /dev/null
 mkdir "$INFODIR"
 
-echo 'Copy URLs to add them, press f to finish, c to clear'
+echo 'Copy URLs to add them -- [F] finish, [C] clear, [Q] quit'
 
 counter=1
 prev=$(xclip -selection clipboard -o)
@@ -42,6 +42,7 @@ while true; do
 	case "$input" in
 		'f'|'F') break;;
 		'c'|'C') rm "$INFODIR"/*; counter=1; echo 'Cleared';;
+		'q'|'Q') exit 0;;
 	esac
 done
 
