@@ -10,6 +10,18 @@ cleanup() {
 
 trap 'cleanup' EXIT
 
+while getopts 'f:F' OPT; do
+	case "$OPT" in
+		'f')
+			FORMAT="$OPTARG"
+			;;
+		'F')
+			FORMAT='-'
+			;;
+		*);;
+	esac
+done
+
 xclip -i -selection clipboard < /dev/null
 mkdir "$INFODIR"
 
@@ -42,9 +54,13 @@ fi
 
 for f in "$INFODIR"/*; do
 	printf '%*s\n' "$(tput cols)" | tr ' ' '-'
-	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Select format for %(title)s"
-	yt-dlp -sf - --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
+	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
+	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"; then
+		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
+	fi
 done
+
+cat "$QUEUE2"
 
 while read -r format info; do
 	yt-dlp --load-info-json "$info" -f "$format"
