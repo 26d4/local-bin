@@ -33,10 +33,15 @@ sleep 0.1
 get_current_instance
 
 if [[ -n "$PRIVATE" ]]; then
-	if has_any_instance_private && [[ -z $current_instance ]]; then
+	if has_any_instance_private && [[ -z "$current_instance" ]]; then
 		firefox -private-window
-		sleep 0.4
 	fi
+
+	while [[ -z "$current_instance" ]]; do
+		sleep 0.4
+		get_current_instance
+	done
+
 	${1+firefox -private-window "$1"}
 else
 	if [[ -z $current_instance ]]; then
@@ -47,7 +52,7 @@ else
 fi
 
 timeout=20
-while [[ -z $current_instance ]] && (( timeout > 0 )); do
+while [[ -z "$current_instance" ]] && (( timeout > 0 )); do
 	get_current_instance
 	timeout=$((timeout-1))
 	sleep 0.1
@@ -55,5 +60,5 @@ done
 
 (( timeout > 0 )) || exit
 
-wmctrl -i -r $current_instance -b add,maximized_vert
-wmctrl -i -r $current_instance -b add,maximized_horz
+wmctrl -i -r "$current_instance" -b add,maximized_vert
+wmctrl -i -r "$current_instance" -b add,maximized_horz
