@@ -61,8 +61,6 @@ for f in "$INFODIR"/*; do
 	fi
 done
 
-cat "$QUEUE2"
-
 while read -r format info; do
 	yt-dlp --load-info-json "$info" -f "$format"
 done < "$QUEUE2"
