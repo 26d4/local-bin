@@ -5,6 +5,7 @@ QUEUE2="$DIR"/queue2
 INFODIR="$DIR"/info
 
 cleanup() {
+	jobs -pr | xargs -r kill
 	rm -r "$DIR"
 }
 
@@ -33,7 +34,7 @@ while true; do
 	curr=$(xclip -selection clipboard -o)
 	if [[ "$curr" != "$prev" ]]; then
 		echo "Copied $curr"
-		yt-dlp -P "$INFODIR" --print-to-file '%()j' "$INFODIR"/dl"$counter".info.json -f 'w*' --print 'Added %(title)s' "$curr" &
+		yt-dlp -P "$INFODIR" --print-to-file '%()j' dl"$counter"'%(autonumber)s'.info.json -f 'w*' --print 'Added %(title)s' "$curr" &
 		prev="$curr"
 		counter=$((counter+1))
 	fi
