@@ -57,13 +57,19 @@ fi
 for f in "$INFODIR"/*; do
 	printf '%*s\n' "$(tput cols)" | tr ' ' '-'
 	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
-	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"; then
-		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
+	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"; then
+		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"
 	fi
 done
 
 [[ -r "$QUEUE2" ]] || exit
 
-while read -r format info; do
-	yt-dlp --load-info-json "$info" -f "$format"
+while read -r format info title; do
+	yt-dlp --load-info-json "$info" -f "$format" --newline --progress-delta 5 --color always | sed "s,^,[$title]\n," &
+
+	while (( $(jobs -pr | wc -l) >= 2)); do
+		wait -n
+	done
 done < "$QUEUE2"
+
+wait
