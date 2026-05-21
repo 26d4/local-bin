@@ -11,14 +11,14 @@ else
 	DIR=$(mktemp -d)
 	yt-dlp --ignore-config -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format ${3+"$3"/}best --sub-langs "$2" "$1"
 	if (( "$#" >= 3 )); then
-		FILENAME=$(yt-dlp --ignore-config -P "$DIR" --no-warnings --get-filename "$1")
-		FILENAME="${FILENAME%.*}"
-		for sub in "$FILENAME."*; do
-			if [[ "${sub##*.}" != "$3" ]] && ! ffprobe -hide_banner -show_entries stream=codec_type "$sub" 2> /dev/null | grep -qE '(audio|video)'; then
-				ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && mv "$sub" .
+		for sub in "$DIR"/*; do
+			if [[ "${sub##*.}" != "$3" ]]; then
+				ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && rm "$sub"
 			else
 				echo "File ignored: $sub"
 			fi
 		done
 	fi
+	mv "$DIR"/* .
+	rm -r "$DIR"
 fi
