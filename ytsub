@@ -9,11 +9,21 @@ if (( "$#" < 2 )); then
 	yt-dlp --no-warnings --no-write-subs --no-write-auto-subs --skip-download --list-subs "$1"
 else
 	DIR=$(mktemp -d)
-	yt-dlp -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format ${3+"$3"/}best --sub-langs "$2" "$1"
+	FMT="${3+$3/}best"
+	FMT="$(sed 's,ass\|srv3,ass/srv3,' <<< "$FMT")"
+	
+	yt-dlp -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format "$FMT" --sub-langs "$2" "$1"
 	if (( "$#" >= 3 )); then
 		for sub in "$DIR"/*; do
 			if [[ "${sub##*.}" != "$3" ]]; then
-				ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && rm "$sub"
+				case "${sub##*.}__$3" in
+					'srv3__ass'|'ass__srv3')
+						/opt/ytsubconverter/ytsubconverter "$sub" "${sub%.*}.$3" && rm "$sub"
+						;;
+					*)
+						ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && rm "$sub"
+						;;
+				esac
 			else
 				echo "File ignored: $sub"
 			fi
