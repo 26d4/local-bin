@@ -44,7 +44,9 @@ if [[ -n "$PRIVATE" ]]; then
 		done
 	fi
 
-	${1+firefox -private-window "$1" &}
+	if [[ -n "${1+x}" ]]; then
+		firefox -private-window "$1" &
+	fi
 else
 	if [[ -z $current_instance ]]; then
 		firefox -new-window ${1+"$1"} &
