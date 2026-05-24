@@ -10,15 +10,20 @@ if (( "$#" < 2 )); then
 else
 	DIR=$(mktemp -d)
 	FMT="${3+$3/}best"
-	FMT="$(sed 's,ass\|srv3,ass/srv3,' <<< "$FMT")"
+	FMT="$(sed 's,ass\|srv3\|ytt,ass/srv3/ytt,' <<< "$FMT")"
 	
 	yt-dlp -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format "$FMT" --sub-langs "$2" "$1"
 	if (( "$#" >= 3 )); then
 		for sub in "$DIR"/*; do
 			if [[ "${sub##*.}" != "$3" ]]; then
 				case "${sub##*.}__$3" in
-					'srv3__ass'|'ass__srv3')
+					'srv3__ass'|'srv3__ytt'|'ass__srv3'|'ass__ytt'|'ytt__ass'|'ytt__srv3')
 						/opt/ytsubconverter/ytsubconverter "$sub" "${sub%.*}.$3" && rm "$sub"
+						;;
+					'srv3__'*)
+						/opt/ytsubconverter/ytsubconverter "$sub" "$DIR/__temp.ass"
+						ffmpeg -hide_banner -i "$DIR/__temp.ass" -f "$3" "${sub%.*}.$3" && rm "$sub"
+						rm "$DIR/__temp.ass"
 						;;
 					*)
 						ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && rm "$sub"
