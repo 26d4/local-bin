@@ -42,7 +42,6 @@ if [[ -n "$PRIVATE" ]]; then
 			get_current_instance
 			timeout=$((timeout-1))
 		done
-		(( timeout > 0 )) || exit
 	fi
 
 	${1+firefox -private-window "$1" &}
