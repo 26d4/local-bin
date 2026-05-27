@@ -5,23 +5,25 @@ function get_current_desktop() {
 	echo "current_desktop = $current_desktop"
 }
 
-function get_current_instance_normal() {
-	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -e 'Firefox$' | head -n1 | cut -f1 -d' ')
-	echo "current_instance = $current_instance"
-}
-function get_current_instance_private() {
-	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -ve 'Firefox$' | grep -e 'Firefox' | head -n1 | cut -f1 -d' ')
-	echo "current_instance = $current_instance"
-}
-function has_any_instance_private() {
-	wmctrl -lx | grep -ve 'Firefox$' | grep -qe 'Firefox'
-}
-function get_current_instance() {
+function get_instances() {
 	if [[ -n "$PRIVATE" ]]; then
-		get_current_instance_private
+		wmctrl -l | grep -ve 'Firefox$' | grep -e 'Firefox'
 	else
-		get_current_instance_normal
+		wmctrl -l | grep -e 'Firefox$'
 	fi
+}
+
+function get_latest_instance() {
+	get_instances | tail -n1 | cut -f1 -d' '
+}
+
+function has_any_instance() {
+	get_instances > /dev/null
+}
+
+function get_current_instance() {
+	current_instance=$(get_instances | grep -e " $current_desktop" | tail -n1 | cut -f1 -d' ')
+	echo "current_instance = $current_instance"
 }
 
 CHOICES=$(
@@ -51,13 +53,14 @@ sleep 0.1
 get_current_instance
 
 if [[ -n "$PRIVATE" ]]; then
-	if [[ -n "$THISWS" ]] && has_any_instance_private && [[ -z "$current_instance" ]]; then
+	if [[ -n "$THISWS" ]] && has_any_instance && [[ -z "$current_instance" ]]; then
 		NEW=1
 	fi
 
 	if [[ -n "$NEW" ]]; then
 		firefox -private-window
 
+		sleep 0.4
 		timeout=20
 		while [[ -z "$current_instance" ]] && (( timeout > 0 )); do
 			sleep 0.4
@@ -67,7 +70,6 @@ if [[ -n "$PRIVATE" ]]; then
 	fi
 
 	if [[ -n "${1+x}" ]]; then
-		sleep 0.2
 		firefox -private-window "$1"
 	fi
 else
@@ -76,22 +78,15 @@ else
 	fi
 
 	if [[ -n "$NEW" ]]; then
-		firefox -new-window ${1+"$1"} &
+		firefox -new-window ${1+"$1"}
 	else
-		firefox -foreground ${1+"$1"} &
+		firefox ${1+"$1"}
 	fi
 fi
 
-[[ -n "$THISWS" ]] || exit 0
-
-timeout=20
-while [[ -z "$current_instance" ]] && (( timeout > 0 )); do
-	get_current_instance
-	timeout=$((timeout-1))
-	sleep 0.1
-done
-
-(( timeout > 0 )) || exit
-
-wmctrl -i -r "$current_instance" -b add,maximized_vert
-wmctrl -i -r "$current_instance" -b add,maximized_horz
+if [[ -n "$NEW" ]]; then
+	wmctrl -i -r "$(get_latest_instance)" -b add,maximized_vert
+	wmctrl -i -r "$(get_latest_instance)" -b add,maximized_horz
+else
+	wmctrl -i -a "$(get_latest_instance)"
+fi
