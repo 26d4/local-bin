@@ -10,7 +10,7 @@ function get_current_instance_normal() {
 	echo "current_instance = $current_instance"
 }
 function get_current_instance_private() {
-	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -ve 'Firefox$' | grep -e 'Firefox' | cut -f1 -d' ')
+	current_instance=$(wmctrl -lx | grep -e " $current_desktop" | grep -ve 'Firefox$' | grep -e 'Firefox' | head -n1 | cut -f1 -d' ')
 	echo "current_instance = $current_instance"
 }
 function has_any_instance_private() {
@@ -24,17 +24,39 @@ function get_current_instance() {
 	fi
 }
 
-if zenity --question --text="Private mode?"; then
-	PRIVATE=1
-fi
+CHOICES=$(
+	zenity --list --checklist --text="$1" --separator='\n' \
+	--column '' --column 'Open in' \
+	FALSE 'New window' \
+	TRUE 'This workspace' \
+	TRUE 'Private mode'
+) || exit 0
+
+while read -r CHOICE; do
+	case "$CHOICE" in
+		'New window')
+			NEW=1
+			;;
+		'Private mode')
+			PRIVATE=1
+			;;
+		'This workspace')
+			THISWS=1
+			;;
+	esac
+done <<< "$CHOICES"
 
 get_current_desktop
 sleep 0.1
 get_current_instance
 
 if [[ -n "$PRIVATE" ]]; then
-	if has_any_instance_private && [[ -z "$current_instance" ]]; then
-		firefox -private-window &
+	if [[ -n "$THISWS" ]] && has_any_instance_private && [[ -z "$current_instance" ]]; then
+		NEW=1
+	fi
+
+	if [[ -n "$NEW" ]]; then
+		firefox -private-window
 
 		timeout=20
 		while [[ -z "$current_instance" ]] && (( timeout > 0 )); do
@@ -45,15 +67,22 @@ if [[ -n "$PRIVATE" ]]; then
 	fi
 
 	if [[ -n "${1+x}" ]]; then
-		firefox -private-window "$1" &
+		sleep 0.2
+		firefox -private-window "$1"
 	fi
 else
-	if [[ -z $current_instance ]]; then
+	if [[ -n "$THISWS" ]] && [[ -z $current_instance ]]; then
+		NEW=1
+	fi
+
+	if [[ -n "$NEW" ]]; then
 		firefox -new-window ${1+"$1"} &
 	else
-		firefox ${1+"$1"} &
+		firefox -foreground ${1+"$1"} &
 	fi
 fi
+
+[[ -n "$THISWS" ]] || exit 0
 
 timeout=20
 while [[ -z "$current_instance" ]] && (( timeout > 0 )); do
