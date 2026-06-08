@@ -14,11 +14,12 @@ function get_instances() {
 }
 
 function get_latest_instance() {
-	get_instances | tail -n1 | cut -f1 -d' '
+	latest_instance=$(get_instances | tail -n1 | cut -f1 -d' ')
+	echo "current_instance = $latest_instance"
 }
 
 function has_any_instance() {
-	get_instances > /dev/null
+	[[ -n "$current_instance" ]] || get_instances > /dev/null
 }
 
 function get_current_instance() {
@@ -53,7 +54,7 @@ sleep 0.1
 get_current_instance
 
 if [[ -n "$PRIVATE" ]]; then
-	if [[ -n "$THISWS" ]] && has_any_instance && [[ -z "$current_instance" ]]; then
+	if [[ -n "$THISWS" ]] && has_any_instance && [[ -z "$current_instance" ]] || [[ -z "$1" ]]; then
 		NEW=1
 	fi
 
@@ -84,9 +85,11 @@ else
 	fi
 fi
 
+get_latest_instance
+
 if [[ -n "$NEW" ]]; then
-	wmctrl -i -r "$(get_latest_instance)" -b add,maximized_vert
-	wmctrl -i -r "$(get_latest_instance)" -b add,maximized_horz
+	wmctrl -i -r "$latest_instance" -b add,maximized_vert
+	wmctrl -i -r "$latest_instance" -b add,maximized_horz
 else
-	wmctrl -i -a "$(get_latest_instance)"
+	wmctrl -i -a "$latest_instance"
 fi
