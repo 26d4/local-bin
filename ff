@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+depend wmctrl tail cut grep zenity firefox || exit
+
 function get_current_desktop() {
 	current_desktop=$(wmctrl -d | grep "*" | cut -f1 -d " ")
 	echo "current_desktop = $current_desktop"

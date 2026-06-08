@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -- "$@" /
+
+while [ "$1" != / ]; do
+	if ! type "$1" >/dev/null; then
+		set -- "$@" "$1"
+	fi
+	shift
+done
+
+shift
+
+if [ "$#" -gt 0 ]; then
+	>&2 echo "Missing dependencies: $*"
+	exit 100
+fi

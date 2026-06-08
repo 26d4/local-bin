@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+depend mktemp mkdir xargs xclip yt-dlp || exit
+
 DIR=$(mktemp -d -t "${0##*/}-$$"-ytdl-XXXXX)
 QUEUE2="$DIR"/queue2
 INFODIR="$DIR"/info
