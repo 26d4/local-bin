@@ -41,6 +41,7 @@ while true; do
 		counter=$((counter+1))
 	fi
 
+	#shellcheck disable=SC2162
 	read -st0.2 -N1 input
 	case "$input" in
 		'f'|'F') break;;
@@ -57,7 +58,7 @@ if [[ -z "$(ls -A "$INFODIR")" ]]; then
 fi
 
 for f in "$INFODIR"/*; do
-	printf '%*s\n' "$(tput cols)" | tr ' ' '-'
+	printf '%*s\n' "$(tput cols)" '' | tr ' ' '_'
 	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
 	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"; then
 		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"
