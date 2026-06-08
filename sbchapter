@@ -2,15 +2,18 @@
 
 import sys
 import urllib.request as req
-import urllib.parse as parse
 from urllib.error import URLError, HTTPError
 import json
 from tempfile import NamedTemporaryFile
 from subprocess import run
 import os
+import shutil
 
 def eprint(*args, **kwargs):
 	print(*args, file=sys.stderr, **kwargs)
+
+if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
+	eprint('ffmpeg and ffprobe must be installed')
 
 if len(sys.argv) < 3:
 	eprint(f'Usage: {os.path.basename(sys.argv[0])} <file> <id>')
