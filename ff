@@ -25,7 +25,7 @@ function has_any_instance() {
 }
 
 function get_current_instance() {
-	current_instance=$(get_instances | grep -e " $current_desktop" | tail -n1 | cut -f1 -d' ')
+	current_instance=$(get_instances | cut -f1-3 -d' ' | grep -e " $current_desktop" | tail -n1 | cut -f1 -d' ')
 	echo "current_instance = $current_instance"
 }
 
