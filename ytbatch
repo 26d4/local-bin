@@ -68,38 +68,61 @@ done
 
 clear -x
 
-line=1
+declare -A LINE_BUSY
+declare -A PID_LINE
+declare -a FINISHED
+max_line=1
+
 while read -r format info; do
-	logfile=$(yt-dlp --load-info-json "$info" --print filename)
+	line=1
+	while [[ -n "${LINE_BUSY[$line]}" ]]; do
+		line=$((line+2))
+		if ((line > max_line)); then
+			max_line=$line
+		fi
+		if ((line+2 >= $(tput lines))); then
+			notify-send "$line"
+			for pid in "${FINISHED[@]}"; do
+				unset "LINE_BUSY[${PID_LINE[$pid]}]"
+				unset "PID_LINE[$pid]"
+			done
+		fi
+	done
+
+	logfile=$(yt-dlp --load-info-json "$info" --no-sponsorblock --print filename)
 	logfile=${logfile%.*}.log
 
-	printf '\033[%d;H\033[2K%s' "$line" "$(yt-dlp --load-info-json "$info" --print "%(title)s -- $format")"
-	line=$((line+1))
+	printf '\033[%d;H\033[2K%s' "$line" "$(yt-dlp --load-info-json "$info" --no-sponsorblock --print "%(title)s -- $format")"
 
 	(
+		set -eo pipefail
 		if yt-dlp --load-info-json "$info" -f "$format" \
 			--newline --progress --progress-delta 1 --color always \
 			--no-simulate --print "Starting download for %(id)s" --print "after_move:%(id)s done" \
 			--quiet --verbose 2> "$logfile"
 		then
 			rm "$logfile"
+			sleep 1
+			exit 0
 		else
-			tail -n1 "$logfile"
-		fi | xargs -L1 echo -ne "\033[$line;H\033[2K"
+			echo Failed
+			sleep 1
+			exit 1
+		fi | xargs -L1 echo -ne "\033[$((line+1));H\033[2K"
 	) &
+	PID_LINE[$!]=$line
+	LINE_BUSY[$line]=1
 
 	while (( $(jobs -pr | wc -l) >= 2)); do
-		wait -n
+		if wait -np pid; then
+			unset "LINE_BUSY[${PID_LINE[$pid]}]"
+			unset "PID_LINE[$pid]"
+		fi
+		FINISHED+=("$pid")
 	done
-	sleep 0.5
-
-	line=$((line+1))
-	if ((line+1 > $(tput lines))); then
-		line=1
-		EXIT_ON_MAX_LINE=1
-	fi
+	sleep 0.1
 done < "$QUEUE2"
 
 wait
 
-printf '\033[%d;H' "${EXIT_ON_MAX_LINE:+$(tput lines)}${EXIT_ON_MAX_LINE-$line}"
+printf '\033[%d;H' "$((max_line+2))"
