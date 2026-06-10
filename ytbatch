@@ -41,8 +41,7 @@ while true; do
 		counter=$((counter+1))
 	fi
 
-	#shellcheck disable=SC2162
-	read -st0.2 -N1 input
+	read -srt0.2 -N1 input
 	case "$input" in
 		'f'|'F') break;;
 		'c'|'C') rm "$INFODIR"/*; counter=1; echo 'Cleared';;
@@ -60,19 +59,47 @@ fi
 for f in "$INFODIR"/*; do
 	printf '%*s\n' "$(tput cols)" '' | tr ' ' '_'
 	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
-	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"; then
-		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f %(title)S" "$QUEUE2" --load-info-json "$f"
+	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"; then
+		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
 	fi
 done
 
 [[ -r "$QUEUE2" ]] || exit
 
-while read -r format info title; do
-	yt-dlp --load-info-json "$info" -f "$format" --newline --progress-delta 5 --color always | sed "s,^,[$title]\n," &
+clear -x
+
+line=1
+while read -r format info; do
+	logfile=$(yt-dlp --load-info-json "$info" --print filename)
+	logfile=${logfile%.*}.log
+
+	printf '\033[%d;H\033[2K%s' "$line" "$(yt-dlp --load-info-json "$info" --print "%(title)s -- $format")"
+	line=$((line+1))
+
+	(
+		if yt-dlp --load-info-json "$info" -f "$format" \
+			--newline --progress --progress-delta 1 --color always \
+			--no-simulate --print "Starting download for %(id)s" --print "after_move:%(id)s done" \
+			--quiet --verbose 2> "$logfile"
+		then
+			rm "$logfile"
+		else
+			tail -n1 "$logfile"
+		fi | xargs -L1 echo -ne "\033[$line;H\033[2K"
+	) &
 
 	while (( $(jobs -pr | wc -l) >= 2)); do
 		wait -n
 	done
+	sleep 0.5
+
+	line=$((line+1))
+	if ((line+1 > $(tput lines))); then
+		line=1
+		EXIT_ON_MAX_LINE=1
+	fi
 done < "$QUEUE2"
 
 wait
+
+printf '\033[%d;H' "${EXIT_ON_MAX_LINE:+$(tput lines)}${EXIT_ON_MAX_LINE-$line}"
