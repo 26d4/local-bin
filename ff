@@ -92,6 +92,6 @@ get_latest_instance
 if [[ -n "$NEW" ]]; then
 	wmctrl -i -r "$latest_instance" -b add,maximized_vert
 	wmctrl -i -r "$latest_instance" -b add,maximized_horz
-else
+elif [[ -z "$THISWS" ]]; then
 	wmctrl -i -a "$latest_instance"
 fi
