@@ -37,7 +37,7 @@ while true; do
 	curr=$(xclip -selection clipboard -o)
 	if [[ "$curr" != "$prev" ]]; then
 		echo "Copied $curr"
-		yt-dlp -P "$INFODIR" --print-to-file '%()j' dl"$counter"'%(autonumber)s'.info.json -f 'w*' --print 'Added %(title)s' "$curr" &
+		yt-dlp -P "$INFODIR" --print-to-file '%()j' dl"$counter"'%(autonumber)s'.info.json -f 'w*' --print '  Added %(title)s' "$curr" &
 		prev="$curr"
 		counter=$((counter+1))
 	fi
@@ -70,26 +70,18 @@ done
 while true; do
 	clear -x
 
-	unset LINE_BUSY
-	declare -A LINE_BUSY
-	unset PID_LINE
-	declare -A PID_LINE
-	unset FINISHED
-	declare -a FINISHED
-	max_line=1
+	unset LINE_PID
+	declare -A LINE_PID
+	unset max_line
+	line=1
 
 	while read -r format info; do
-		line=1
-		while [[ -n "${LINE_BUSY[$line]}" ]]; do
-			line=$((line+2))
-			if ((line > max_line)); then
-				max_line=$line
-			fi
+		while [[ -n "${LINE_PID[$line]}" ]] && jobs -p | grep -q "${LINE_PID[$line]}"; do
+			line=$((line+3))
+
 			if ((line+2 >= $(tput lines))); then
-				for pid in "${FINISHED[@]}"; do
-					unset "LINE_BUSY[${PID_LINE[$pid]}]"
-					unset "PID_LINE[$pid]"
-				done
+				line=1
+				max_line="$(tput lines)"
 			fi
 		done
 
@@ -103,34 +95,33 @@ while true; do
 			if yt-dlp --load-info-json "$info" -f "$format" \
 				--newline --progress --progress-delta 1 --color always \
 				--no-simulate --print "Starting download for %(id)s" --print "after_move:%(id)s done" \
-				--quiet --verbose 2> "$logfile" && [ "$(shuf -i 0-1 -n1)" == 0 ]
+				--quiet --verbose 2> "$logfile"
 			then
 				rm "$logfile"
-				sleep 1
 				exit 0
 			else
 				echo Failed
 				echo "$format" "$info" >> "$FAILQUEUE"
-				sleep 1
 				exit 1
 			fi | xargs -L1 echo -ne "\033[$((line+1));H\033[2K"
 		) &
-		PID_LINE[$!]=$line
-		LINE_BUSY[$line]=1
+		LINE_PID[$line]=$!
 
-		while (( $(jobs -pr | wc -l) >= 2)); do
-			if wait -np pid; then
-				unset "LINE_BUSY[${PID_LINE[$pid]}]"
-				unset "PID_LINE[$pid]"
-			fi
-			FINISHED+=("$pid")
+		while (( $(jobs -rp | wc -l) >= 2 )); do
+			wait -n
+		done
+
+		timer=15
+		while (( timer > 0 )) && [[ -n "$(jobs -r)" ]]; do
+			sleep 1
+			timer=$((timer-1))
 		done
 		sleep 0.1
 	done < "$QUEUE2"
 
 	wait
 
-	printf '\033[%d;H' "$((max_line+2))"
+	printf '\033[%d;H' "${max_line:=$((line+3))}"
 
 	if [[ -r "$FAILQUEUE" ]] && (( $(wc -l < "$FAILQUEUE") > 0 )) && read -rN1 -p "$(wc -l < "$FAILQUEUE") failed, retry?"; then
 		case "$REPLY" in
