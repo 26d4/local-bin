@@ -8,7 +8,7 @@ INFODIR="$DIR"/info
 FAILQUEUE="$DIR"/fail_queue
 
 cleanup() {
-	jobs -pr | xargs -r kill
+	jobs -p | xargs -r kill
 	rm -r "$DIR"
 }
 
