@@ -8,6 +8,7 @@ INFODIR="$DIR"/info
 FAILQUEUE="$DIR"/fail_queue
 
 cleanup() {
+	jobs > /dev/null
 	jobs -p | xargs -r kill
 	rm -r "$DIR"
 }
@@ -67,6 +68,8 @@ done
 
 [[ -r "$QUEUE2" ]] || exit
 
+sleep 1.4
+
 while true; do
 	clear -x
 
@@ -76,15 +79,6 @@ while true; do
 	line=1
 
 	while read -r format info; do
-		while [[ -n "${LINE_PID[$line]}" ]] && jobs -p | grep -q "${LINE_PID[$line]}"; do
-			line=$((line+3))
-
-			if ((line+2 >= $(tput lines))); then
-				line=1
-				max_line="$(tput lines)"
-			fi
-		done
-
 		logfile=$(yt-dlp --load-info-json "$info" --no-sponsorblock --print filename)
 		logfile=${logfile%.*}.log
 
@@ -93,19 +87,30 @@ while true; do
 		(
 			set -eo pipefail
 			if yt-dlp --load-info-json "$info" -f "$format" \
-				--newline --progress --progress-delta 1 --color always \
-				--no-simulate --print "Starting download for %(id)s" --print "after_move:%(id)s done" \
-				--quiet --verbose 2> "$logfile"
+				--newline --progress-delta 1 --color always \
+				--no-quiet --verbose 2> "$logfile"
 			then
 				rm "$logfile"
+				echo Done
 				exit 0
 			else
-				echo Failed
+				# echo Failed
 				echo "$format" "$info" >> "$FAILQUEUE"
 				exit 1
-			fi | xargs -L1 echo -ne "\033[$((line+1));H\033[2K"
+			fi | while read -r; do
+				echo -ne "\033[$((line+1));H\033[2K${REPLY:0:$(eval 'tput cols')}"
+			done
 		) &
 		LINE_PID[$line]=$!
+
+		while [[ -n "${LINE_PID[$line]}" ]] && jobs -p | grep -q "${LINE_PID[$line]}"; do
+			line=$((line+2))
+
+			if ((line+1 >= $(tput lines))); then
+				line=1
+				max_line="$(tput lines)"
+			fi
+		done
 
 		while (( $(jobs -rp | wc -l) >= 2 )); do
 			wait -n
@@ -121,7 +126,7 @@ while true; do
 
 	wait
 
-	printf '\033[%d;H' "${max_line:=$((line+3))}"
+	printf '\033[%d;H' "${max_line:=$line}"
 
 	if [[ -r "$FAILQUEUE" ]] && (( $(wc -l < "$FAILQUEUE") > 0 )) && read -rN1 -p "$(wc -l < "$FAILQUEUE") failed, retry?"; then
 		case "$REPLY" in
