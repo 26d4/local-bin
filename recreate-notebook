@@ -1,0 +1,26 @@
+#!/usr/bin/env wolframscript
+
+RecreateNotebook[fileName_String] := Module[
+  {nb = NotebookCreate[],
+   strm = OpenRead[fileName, BinaryFormat -> True],
+   result, cell, tmpChar, beginPos, endPos},
+While[(result = 
+  Find[strm, {"Cell[\"", "Cell[BoxData[", "Cell[TextData["}]) =!= EndOfFile,
+  beginPos = SetStreamPosition[strm, StreamPosition[strm] - StringLength[result]];
+  Quiet[ cell = Check[
+    Read[strm, Expression],
+    tmpChar = " "; endPos = StreamPosition[strm];
+       While[tmpChar =!= "," && endPos > beginPos + 1,
+       SetStreamPosition[strm, --endPos];
+       tmpChar = Read[strm, Character]];
+       If[endPos > beginPos,
+          SetStreamPosition[strm, beginPos];
+          ToExpression@ StringJoin@ ReadList[strm, Character, endPos - beginPos],
+       $Failed]
+  ]];
+  If[Head[cell] === Cell, NotebookWrite[nb, cell, After]];];
+  Close[strm];
+  NotebookSave[nb, FileNameJoin[{DirectoryName[fileName], FileBaseName[fileName]<>".recreated.nb"}]]
+]
+
+RecreateNotebook[AbsoluteFileName[$ScriptCommandLine[[2]]]] // UsingFrontEnd
