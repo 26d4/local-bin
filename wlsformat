@@ -1,0 +1,19 @@
+#!/usr/bin/env wolframscript
+
+Needs["CodeFormatter`"]
+
+argv = $ScriptCommandLine
+
+lines = StringSplit[CodeFormat[File[argv[[2]]], "IndentationString" -> "\t"], "\n"]
+
+If[StringStartsQ[lines[[1]], "#!"], 
+	lines[[1]] = StringReplace[lines[[1]], " / " -> "/"]
+]
+
+Scan[
+	If[Length[argv] >= 3,
+		WriteString[argv[[3]], #1 <> "\n"] &,
+		Print
+	],
+	lines
+]
