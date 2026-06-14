@@ -4,16 +4,18 @@ Needs["CodeFormatter`"]
 
 argv = $ScriptCommandLine
 
-lines = StringSplit[CodeFormat[File[argv[[2]]], "IndentationString" -> "\t"], "\n"]
+If[Length[argv] < 2, Quit[1]]
 
-If[StringStartsQ[lines[[1]], "#!"], 
-	lines[[1]] = StringReplace[lines[[1]], " / " -> "/"]
-]
+content = ReadString[argv[[2]]]
+{first, rest} = StringSplit[content, "\n", 2]
 
-Scan[
-	If[Length[argv] >= 3,
-		WriteString[argv[[3]], #1 <> "\n"] &,
-		Print
-	],
-	lines
+hasshebang = StringStartsQ[first, "#!"]
+
+formatted = CodeFormat[If[hasshebang, rest, first <> "\n" <> rest], "IndentationString" -> "\t"]
+
+If[hasshebang, formatted = first <> "\n\n" <> formatted]
+
+If[Length[argv] >= 3,
+	WriteString[argv[[3]], formatted],
+	Print[formatted]
 ]
