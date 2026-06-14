@@ -6,10 +6,11 @@ DIR=$(mktemp -d -t "${0##*/}-$$"-ytdl-XXXXX)
 QUEUE2="$DIR"/queue2
 INFODIR="$DIR"/info
 FAILQUEUE="$DIR"/fail_queue
+FIFODIR="$DIR"/fifo
 
 cleanup() {
 	jobs > /dev/null
-	jobs -p | xargs -r kill
+	jobs -p | xargs -r kill -sINT
 	rm -r "$DIR"
 }
 
@@ -38,7 +39,7 @@ while true; do
 	curr=$(xclip -selection clipboard -o)
 	if [[ "$curr" != "$prev" ]]; then
 		echo "Copied $curr"
-		yt-dlp -P "$INFODIR" --print-to-file '%()j' dl"$counter"'%(autonumber)s'.info.json -f 'w*' --print '  Added %(title)s' "$curr" &
+		yt-dlp -P "$INFODIR" --no-sponsorblock --print-to-file '%()j' dl"$counter"'%(autonumber)s'.info.json -f 'w*' --print '  Added %(title)s' "$curr" &
 		prev="$curr"
 		counter=$((counter+1))
 	fi
@@ -68,6 +69,7 @@ done
 
 [[ -r "$QUEUE2" ]] || exit
 
+mkdir "$FIFODIR"
 sleep 1.4
 
 while true; do
@@ -75,40 +77,45 @@ while true; do
 
 	unset LINE_PID
 	declare -A LINE_PID
-	unset max_line
-	line=1
+	unset MAX_LINE
+	LINE=1
 
 	while read -r format info; do
 		logfile=$(yt-dlp --load-info-json "$info" --no-sponsorblock --print filename)
 		logfile=${logfile%.*}.log
 
-		printf '\033[%d;H\033[2K%s' "$line" "$(yt-dlp --load-info-json "$info" --no-sponsorblock --print "%(title)s -- $format")"
+		printf '\033[%d;H\033[2K%s' "$LINE" "$(yt-dlp --load-info-json "$info" --no-sponsorblock --print "%(title)s -- $format")"
 
 		(
+			fifofile="$FIFODIR/$$-$RANDOM"
+			mkfifo "$fifofile"
+			:> "$logfile"
+
+			(sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' < "$fifofile" >> "$logfile") &
+
 			set -eo pipefail
 			if yt-dlp --load-info-json "$info" -f "$format" \
 				--newline --progress-delta 1 --color always \
-				--no-quiet --verbose 2> "$logfile"
+				--no-quiet --verbose 2> "$fifofile"
 			then
 				rm "$logfile"
-				echo Done
+				echo -e '\033[92mDone'
 				exit 0
 			else
-				# echo Failed
-				echo "$format" "$info" >> "$FAILQUEUE"
+				[[ -d "$DIR" ]] && echo "$format" "$info" >> "$FAILQUEUE"
 				exit 1
-			fi | while read -r; do
-				echo -ne "\033[$((line+1));H\033[2K${REPLY:0:$(eval 'tput cols')}"
+			fi | tee "$fifofile" | while read -r; do
+				echo -ne "\033[$((LINE+1));H\033[2K${REPLY:0:$(eval 'tput cols')}\033[0m"
 			done
 		) &
-		LINE_PID[$line]=$!
+		LINE_PID[$LINE]=$!
 
-		while [[ -n "${LINE_PID[$line]}" ]] && jobs -p | grep -q "${LINE_PID[$line]}"; do
-			line=$((line+2))
+		while [[ -n "${LINE_PID[$LINE]}" ]] && jobs -p | grep -q "${LINE_PID[$LINE]}"; do
+			LINE=$((LINE+2))
 
-			if ((line+1 >= $(tput lines))); then
-				line=1
-				max_line="$(tput lines)"
+			if ((LINE+1 >= $(tput lines))); then
+				LINE=1
+				MAX_LINE="$(tput lines)"
 			fi
 		done
 
@@ -126,7 +133,7 @@ while true; do
 
 	wait
 
-	printf '\033[%d;H' "${max_line:=$line}"
+	printf '\033[%d;H' "${MAX_LINE:=$LINE}"
 
 	if [[ -r "$FAILQUEUE" ]] && (( $(wc -l < "$FAILQUEUE") > 0 )) && read -rN1 -p "$(wc -l < "$FAILQUEUE") failed, retry?"; then
 		case "$REPLY" in
