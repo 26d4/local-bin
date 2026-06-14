@@ -14,6 +14,7 @@ def eprint(*args, **kwargs):
 
 if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
 	eprint('ffmpeg and ffprobe must be installed')
+	sys.exit(100)
 
 if len(sys.argv) < 3:
 	eprint(f'Usage: {os.path.basename(sys.argv[0])} <file> <id>')
