@@ -61,7 +61,7 @@ fi
 
 for f in "$INFODIR"/*; do
 	printf '%*s\n' "$(tput cols)" '' | tr ' ' '_'
-	yt-dlp -f 'w*' --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
+	yt-dlp -f 'w*' --no-warnings --no-sponsorblock --load-info-json "$f" --print "Selecting format for %(title)s"
 	if ! yt-dlp -s ${FORMAT+-f "$FORMAT"} --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"; then
 		yt-dlp -sf- --no-sponsorblock --print-to-file "%(format_id)s $f" "$QUEUE2" --load-info-json "$f"
 	fi
@@ -81,10 +81,10 @@ while true; do
 	LINE=1
 
 	while read -r format info; do
-		logfile=$(yt-dlp --load-info-json "$info" --no-sponsorblock --print filename)
+		logfile=$(yt-dlp --load-info-json "$info" --no-warnings --no-sponsorblock --print filename)
 		logfile=${logfile%.*}.log
 
-		printf '\033[%d;H\033[2K%s' "$LINE" "$(yt-dlp --load-info-json "$info" --no-sponsorblock --print "%(title)s -- $format")"
+		printf '\033[%d;H\033[2K%s' "$LINE" "$(yt-dlp --load-info-json "$info" --no-warnings --no-sponsorblock --print "%(title)s -- $format")"
 
 		(
 			fifofile="$FIFODIR/$$-$RANDOM"
