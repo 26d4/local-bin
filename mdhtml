@@ -4,4 +4,4 @@ OUTNAME="${2}"
 : "${OUTNAME:="${INNAME%.md}".html}"
 depend readlink dirname pandoc || exit
 cd "$(dirname "$(readlink -f "$INNAME")")" || exit
-pandoc "$INNAME" -o "$OUTNAME" -f markdown+autolink_bare_uris -t html -s --variable 'maxwidth=60em' --mathml --embed-resources "${@:3}"
+pandoc "$INNAME" -o "$OUTNAME" -f markdown+autolink_bare_uris -t html -s --variable 'maxwidth=60em' --citeproc --mathml --embed-resources "${@:3}"
