@@ -103,6 +103,7 @@ while true; do
 				exit 0
 			else
 				[[ -d "$DIR" ]] && echo "$format" "$info" >> "$FAILQUEUE"
+				echo -e '\033[91mFailed'
 				exit 1
 			fi | tee "$fifofile" | while read -r; do
 				echo -ne "\033[$((LINE+1));H\033[2K${REPLY:0:$(eval 'tput cols')}\033[0m"
