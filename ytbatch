@@ -2,7 +2,7 @@
 
 depend mktemp mkdir xargs xclip yt-dlp cat wc tput mv || exit
 
-DIR=$(mktemp -d -t "${0##*/}-$$"-ytdl-XXXXX)
+DIR=$(mktemp -d --tmpdir"${XDG_RUNTIME_DIR:+=$XDG_RUNTIME_DIR}" "${0##*/}-$$"-ytdl-XXXXX)
 QUEUE2="$DIR"/queue2
 INFODIR="$DIR"/info
 FAILQUEUE="$DIR"/fail_queue
