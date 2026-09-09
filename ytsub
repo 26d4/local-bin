@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend mktemp dirname mv rm sed yt-dlp ffmpeg /opt/ytsubconverter/ytsubconverter
+depend mktemp dirname mv rm sed yt-dlp ffmpeg /opt/ytsubconverter/ytsubconverter || exit
 
 if (( "$#" < 1)); then
 	>&2 echo "Usage: ${0##*/} <ID> [<language> [format]]"
