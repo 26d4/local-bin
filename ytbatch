@@ -88,7 +88,7 @@ while true; do
 		printf '\033[%d;H\033[2K%s' "$LINE" "$(yt-dlp --load-info-json "$info" --no-warnings --no-sponsorblock --print "%(title)s -- $format")"
 
 		(
-			fifofile="$FIFODIR/$$-$RANDOM"
+			fifofile="$FIFODIR/$BASHPID-$RANDOM"
 			mkfifo "$fifofile"
 			:> "$logfile"
 
