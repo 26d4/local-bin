@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend wine zenity
+depend wine zenity find readlink xargs
 
 # TODO support goldsrc
 GAMEDIR=$(
