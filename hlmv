@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend wine zenity find readlink xargs
+depend wine winepath zenity find readlink xargs || exit
 
 # TODO support goldsrc
 GAMEDIR=$(
@@ -39,4 +39,14 @@ if ! [[ -e "$GAMEDIR"/bin/hlmv.exe ]]; then
 	export VPROJECT="${VPROJECT-"$GAMEDIR/$MODDIR"}"
 fi
 
-exec wine "${GAMEDIR?}"/bin/hlmv.exe "$@"
+ARGS=()
+while (( $# > 0 )); do
+	if [[ -e "$1" ]]; then
+		ARGS+=("$(winepath -w "$1")")
+	else
+		ARGS+=("$1")
+	fi
+	shift
+done
+
+exec wine "${GAMEDIR?}"/bin/hlmv.exe "${ARGS[@]}"
