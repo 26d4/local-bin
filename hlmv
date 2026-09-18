@@ -12,8 +12,9 @@ GAMEDIR=$(
 
 if ! [[ -e "$GAMEDIR"/bin/hlmv.exe ]]; then
 	GAMEDIR="$(
-		# TODO find all library directories
-		find "$HOME/.steam/steam/steamapps/common" -path '*/bin/hlmv.exe' -printf '%p\0%P\0' |
+		grep path "$HOME"/.steam/steam/config/libraryfolders.vdf |
+		sed 's,^.*path\(\"\|\)\s*,,; s,\s*$,,' | tr -d \" |
+		xargs -I{} find "{}/steamapps/common" -path '*/bin/hlmv.exe' -printf '%p\0%P\0' |
 		xargs -0 zenity --list --column=_ --column=HLMV --hide-column=1 --text='Select HLMV variant'
 	)"
 	
