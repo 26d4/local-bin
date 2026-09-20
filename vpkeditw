@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend inotifywait vpkedit mkdir pgrep grep hlmv xdg-open readlink
+depend inotifywait vpkedit mkdir pgrep grep hlmv xdg-open readlink || exit
 
 LANDDIR="${XDG_CACHE_HOME:-$HOME/.cache}/0_VPKEDIT_PREVIEW"
 
