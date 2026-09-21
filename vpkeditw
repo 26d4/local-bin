@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
 
-depend inotifywait vpkedit mkdir pgrep grep hlmv xdg-open readlink || exit
+depend inotifywait vpkedit mkdir pgrep grep hlmv xdg-open readlink cat ps pkill || exit
 
 LANDDIR="${XDG_CACHE_HOME:-$HOME/.cache}/0_VPKEDIT_PREVIEW"
+PIDFILE="${XDG_RUNTIME_DIR?}/vpkedit-preview.pid"
+
+set -m
 
 (
-	if [[ -d "$LANDDIR" ]]; then
+	if [[ -e "$PIDFILE" ]] && ps -p "$(cat "$PIDFILE")"; then
 		exit
 	fi
 
-	TMPDIR=$(mktemp -d --tmpdir"${XDG_RUNTIME_DIR:+=$XDG_RUNTIME_DIR}" vpkeditw-XXXX)
+	echo "$BASHPID" > "$PIDFILE"
+
+	TMPDIR=$(mktemp -d --tmpdir="${XDG_RUNTIME_DIR?}" vpkeditw-XXXX)
 	mkdir "$LANDDIR"
-	trap 'rm -r "$LANDDIR"; rm -r "$TMPDIR"' EXIT
+	trap 'rm -r "$LANDDIR" "$TMPDIR"; pkill -g0 inotifywait' EXIT
 
-	while true; do
-		inotifywait -qm -t5 -e close_write --format %f "$LANDDIR" |
-		while read -r FILE; do
-			[[ -e "$LANDDIR/$FILE" ]] || continue
-			mv -ft "$TMPDIR" "$LANDDIR/$FILE"
+	while read -r FILE; do
+		[[ -e "$LANDDIR/$FILE" ]] || continue
+		mv -ft "$TMPDIR" "$LANDDIR/$FILE"
 
-			case "$FILE" in
-				(*.vtx|*.vvd|*.phy|*.ani);;
-				(*.mdl)
-					hlmv "$TMPDIR/$FILE" &
-					;;
-				(*)
-					xdg-open "$TMPDIR/$FILE" &
-					;;
-			esac
-		done
-
-		if ! pgrep vpkedit; then
-			break
-		fi
-	done
+		case "$FILE" in
+			(*.vtx|*.vvd|*.phy|*.ani);;
+			(*.mdl)
+				hlmv "$TMPDIR/$FILE" &
+				;;
+			(*)
+				xdg-open "$TMPDIR/$FILE" &
+				;;
+		esac
+	done < <(inotifywait -qm -e close_write --format %f "$LANDDIR")
 ) &
 
-exec vpkedit "$(readlink -f "$1")"
+trap 'pgrep -l vpkedit | grep -qv vpkeditw || kill "$(cat "$PIDFILE")"' EXIT
+
+vpkedit "$(readlink -f "$1")"
