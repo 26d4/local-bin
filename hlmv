@@ -2,11 +2,13 @@
 
 depend wine winepath zenity find readlink xargs dirname || exit
 
-# TODO support goldsrc
-
 ARGS=()
 while (( $# > 0 )); do
 	if [[ -e "$1" ]]; then
+		if command -v hlam > /dev/null && [[ ! -e "${1%.mdl}.vvd" ]]; then
+			exec hlam "$@"
+		fi
+
 		FILEDIR=$(dirname "$1")
 		ARGS+=("$(winepath -w "$1")")
 	else
