@@ -28,7 +28,7 @@ if ! [[ -e "$GAMEDIR"/bin/hlmv.exe ]]; then
 		grep path "$HOME"/.steam/steam/config/libraryfolders.vdf |
 		sed 's,^.*path\(\"\|\)\s*\(\"\|\),,; s,\(\"\|\)\s*$,,' |
 		xargs -I{} find "{}/steamapps/common" -path '*/bin/hlmv.exe' -printf '%p\0%P\0' |
-		xargs -0 zenity --list --column=_ --column=HLMV --hide-column=1 --text='Select HLMV variant'
+		xargs -0 zenity --width=300 --height=250 --list --column=_ --column=HLMV --hide-column=1 --text='Select HLMV variant'
 	)"
 
 	[[ -n "$GAMEDIR" ]] || exit 0
@@ -48,7 +48,7 @@ if ! [[ -e "$GAMEDIR"/bin/hlmv.exe ]]; then
 	case "${#MODDIRS[@]}" in
 		0) zenity --error --text="No mods with gameinfo.txt in $GAMEDIR"; exit 1;;
 		1) MODDIR="${MODDIRS[0]}";;
-		*) MODDIR=$(xargs zenity --list --column=Directory --text='Select mod directory' <<< "${MODDIRS[@]}");;
+		*) MODDIR=$(xargs zenity --width=300 --height=250 --list --column=Directory --text='Select mod directory' <<< "${MODDIRS[@]}");;
 	esac
 
 	[[ -n "$MODDIR" ]] || exit
