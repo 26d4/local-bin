@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend wmctrl tail cut grep zenity firefox || exit
+depend wmctrl tail cut grep zenity firefox fold || exit
 
 function get_current_desktop() {
 	current_desktop=$(wmctrl -d | grep '\*' | cut -f1 -d " ")
@@ -30,7 +30,7 @@ function get_current_instance() {
 }
 
 CHOICES=$(
-	zenity --list --checklist --text="$1" --separator='\n' \
+	zenity --list --checklist --text="$(fold -sw80 <<< "$1")" --separator='\n' \
 	--column '' --column 'Open in' \
 	FALSE 'New window' \
 	TRUE 'This workspace' \
