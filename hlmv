@@ -52,25 +52,27 @@ HLMV=$(
 
 [[ -n "$HLMV" ]] || exit
 
-VPROJECT=$(
-	declare -a MODDIRS
-	cd "$(dirname "$HLMV")" || exit
+if [[ -z "$VPROJECT" ]]; then
+	VPROJECT=$(
+		declare -a MODDIRS
+		cd "$(dirname "$HLMV")" || exit
 
-	while ! [[ "$(pwd)" == / ]] && ! [[ -e ./steam_appid.txt ]]; do
-		cd .. || break
-		mapfile -td '' MODDIRS < <(find "$(pwd -P)" -maxdepth 1 -type d -exec test -e "{}/gameinfo.txt" ';' -printf '%p\0%P\0')
-		(( ${#MODDIRS[@]} == 0 )) || break
-	done
+		while ! [[ "$(pwd)" == / ]] && ! [[ -e ./steam_appid.txt ]]; do
+			cd .. || break
+			mapfile -td '' MODDIRS < <(find "$(pwd -P)" -maxdepth 1 -type d -exec test -e "{}/gameinfo.txt" ';' -printf '%p\0%P\0')
+			(( ${#MODDIRS[@]} == 0 )) || break
+		done
 
-	case "${#MODDIRS[@]}" in
-		0) zenity --error --text="No mods with gameinfo.txt";;
-		1|2) echo "${MODDIRS[0]}";;
-		*)
-			printf '%s\0' "${MODDIRS[@]}" |
-			xargs -0 zenity --width=300 --height=250 --list --column=_ --column=Directory --hide-column=1 --text='Select mod directory'
-		;;
-	esac
-)
+		case "${#MODDIRS[@]}" in
+			0) zenity --error --text="No mods with gameinfo.txt";;
+			1|2) echo "${MODDIRS[0]}";;
+			*)
+				printf '%s\0' "${MODDIRS[@]}" |
+				xargs -0 zenity --width=300 --height=250 --list --column=_ --column=Directory --hide-column=1 --text='Select mod directory'
+			;;
+		esac
+	)
+fi
 
 [[ -n "$VPROJECT" ]] || exit
 
