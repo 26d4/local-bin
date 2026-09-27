@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-depend wine winepath zenity find readlink xargs dirname || exit
+depend wine winepath zenity find readlink xargs dirname test || exit
 
 ARGS=()
 while (( $# > 0 )); do
@@ -17,44 +17,63 @@ while (( $# > 0 )); do
 	shift
 done
 
+HLMVS=()
+
 GAMEDIR=$(
 	cd "$FILEDIR" || exit
-	while ! [[ -e ./bin/hlmv.exe ]] && ! [[ "$(pwd)" = / ]]; do
+
+	while ! [[ -e ./gameinfo.txt ]] && ! [[ "$(pwd)" == / ]]; do
 		cd .. || break
 	done
+	cd ..
 	pwd -P
 )
 
-if ! [[ -e "$GAMEDIR"/bin/hlmv.exe ]]; then
-	GAMEDIR="$(
+mapfile -td '' HLMVS < <(find "$GAMEDIR" -nowarn -maxdepth 4 -iname 'hlmv.exe' -printf '%p\0%P\0')
+
+if (( ${#HLMVS[@]} == 0 )); then
+	mapfile -td '' HLMVS < <(
 		grep path "$HOME"/.steam/steam/config/libraryfolders.vdf |
 		sed 's,^.*path\(\"\|\)\s*\(\"\|\),,; s,\(\"\|\)\s*$,,' |
-		xargs -I{} find "{}/steamapps/common" -path '*/bin/hlmv.exe' -printf '%p\0%P\0' |
-		xargs -0 zenity --width=300 --height=250 --list --column=_ --column=HLMV --hide-column=1 --text='Select HLMV variant'
-	)"
-
-	[[ -n "$GAMEDIR" ]] || exit 0
-	
-	GAMEDIR=$(readlink -f "$GAMEDIR")
-	GAMEDIR="${GAMEDIR%/bin/hlmv.exe}"
-	
-	mapfile -t MODDIRS < <(
-		cd "$GAMEDIR" || exit
-		for f in *; do
-			if [[ -e "$f"/gameinfo.txt ]]; then
-				echo "$f"
-			fi
-		done
+		xargs -I'{}' find "{}/steamapps/common" -maxdepth 5 -iname 'hlmv.exe' -printf '%p\0%P\0'
 	)
-
-	case "${#MODDIRS[@]}" in
-		0) zenity --error --text="No mods with gameinfo.txt in $GAMEDIR"; exit 1;;
-		1) MODDIR="${MODDIRS[0]}";;
-		*) MODDIR=$(xargs zenity --width=300 --height=250 --list --column=Directory --text='Select mod directory' <<< "${MODDIRS[@]}");;
-	esac
-
-	[[ -n "$MODDIR" ]] || exit
-	export VPROJECT="${VPROJECT-"$GAMEDIR/$MODDIR"}"
 fi
 
-exec wine "${GAMEDIR?}"/bin/hlmv.exe "${ARGS[@]}"
+HLMV=$(
+	case "${#HLMVS[@]}" in
+		0) zenity --error --text="No HLMV detected";;
+		1|2) echo "${HLMVS[0]}";;
+		*)
+			printf '%s\0' "${HLMVS[@]}" |
+			xargs -0 zenity --width=300 --height=250 --list --column=_ --column=HLMV --hide-column=1 --text='Select HLMV variant'
+		;;
+	esac
+)
+
+[[ -n "$HLMV" ]] || exit
+
+VPROJECT=$(
+	declare -a MODDIRS
+	cd "$(dirname "$HLMV")" || exit
+
+	while ! [[ "$(pwd)" == / ]] && ! [[ -e ./steam_appid.txt ]]; do
+		cd .. || break
+		mapfile -td '' MODDIRS < <(find "$(pwd -P)" -maxdepth 1 -type d -exec test -e "{}/gameinfo.txt" ';' -printf '%p\0%P\0')
+		(( ${#MODDIRS[@]} == 0 )) || break
+	done
+
+	case "${#MODDIRS[@]}" in
+		0) zenity --error --text="No mods with gameinfo.txt";;
+		1|2) echo "${MODDIRS[0]}";;
+		*)
+			printf '%s\0' "${MODDIRS[@]}" |
+			xargs -0 zenity --width=300 --height=250 --list --column=_ --column=Directory --hide-column=1 --text='Select mod directory'
+		;;
+	esac
+)
+
+[[ -n "$VPROJECT" ]] || exit
+
+export VPROJECT
+
+exec wine "$HLMV" "${ARGS[@]}"
