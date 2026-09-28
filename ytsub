@@ -2,33 +2,49 @@
 
 depend mktemp dirname mv rm sed yt-dlp ffmpeg /opt/ytsubconverter/ytsubconverter || exit
 
-if (( "$#" < 1)); then
-	>&2 echo "Usage: ${0##*/} <ID> [<language> [format]]"
+usage() {
+	>&2 echo "Usage: ${0##*/} [-f format] [-l lang1,lang2,...] [-P outdir] ID"
+	>&2 echo "-l is required for downloading, omit for list of languages"
 	exit
+}
+
+while getopts 'P:l:f:' OPT; do
+	case "$OPT" in
+		P) OUTDIR="$OPTARG";;
+		l) SLANG="$OPTARG";;
+		f) OFMT="${OPTARG%/}";;
+		*) usage;;
+	esac
+done
+
+shift $((OPTIND-1))
+
+if (( "$#" < 1 )) || [[ ! -d "${OUTDIR:-/}" ]]; then
+	usage
 fi
 
-if (( "$#" < 2 )); then
+if [[ -z "$SLANG" ]]; then
 	yt-dlp --no-warnings --no-write-subs --no-write-auto-subs --skip-download --list-subs "$1"
 else
-	DIR=$(mktemp -d)
-	FMT="${3+$3/}best"
+	DIR=$(mktemp -d --tmpdir"${XDG_RUNTIME_DIR:+=$XDG_RUNTIME_DIR}")
+	FMT="${OFMT:+$OFMT/}best"
 	FMT="$(sed 's,ass\|srv3\|ytt,ass/srv3/ytt,' <<< "$FMT")"
 	
-	yt-dlp -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format "$FMT" --sub-langs "$2" "$1"
-	if (( "$#" >= 3 )); then
+	yt-dlp -P "$DIR" --no-warnings --skip-download --write-subs --write-auto-subs --sub-format "$FMT" --sub-langs "$SLANG" "$1"
+	if [[ -n "$OFMT" ]]; then
 		for sub in "$DIR"/*; do
-			if [[ "${sub##*.}" != "$3" ]]; then
-				case "${sub##*.}__$3" in
+			if [[ "${sub##*.}" != "$OFMT" ]]; then
+				case "${sub##*.}__$OFMT" in
 					'srv3__ass'|'srv3__ytt'|'ass__srv3'|'ass__ytt'|'ytt__ass'|'ytt__srv3')
-						/opt/ytsubconverter/ytsubconverter "$sub" "${sub%.*}.$3" && rm "$sub"
+						/opt/ytsubconverter/ytsubconverter "$sub" "${sub%.*}.$OFMT" && rm "$sub"
 						;;
 					'srv3__'*)
 						/opt/ytsubconverter/ytsubconverter "$sub" "$DIR/__temp.ass"
-						ffmpeg -hide_banner -i "$DIR/__temp.ass" -f "$3" "${sub%.*}.$3" && rm "$sub"
+						ffmpeg -hide_banner -i "$DIR/__temp.ass" -f "$OFMT" "${sub%.*}.$OFMT" && rm "$sub"
 						rm "$DIR/__temp.ass"
 						;;
 					*)
-						ffmpeg -hide_banner -i "$sub" -f "$3" "${sub%.*}.$3" && rm "$sub"
+						ffmpeg -hide_banner -i "$sub" -f "$OFMT" "${sub%.*}.$OFMT" && rm "$sub"
 						;;
 				esac
 			else
@@ -36,6 +52,6 @@ else
 			fi
 		done
 	fi
-	mv "$DIR"/* "$(dirname "$(yt-dlp --print filename "$1")")"
+	mv "$DIR"/* "${OUTDIR:-"$(dirname "$(yt-dlp --print filename "$1")")"}"
 	rm -r "$DIR"
 fi
