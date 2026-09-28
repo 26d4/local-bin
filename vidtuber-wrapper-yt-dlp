@@ -1,4 +1,2 @@
 #!/bin/sh
-#set -x
 exec yt-dlp --config-locations="~/yt-dlp-vidtuber.conf" "$@"
-#set +x 
