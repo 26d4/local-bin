@@ -17,7 +17,7 @@ function get_instances() {
 
 function get_latest_instance() {
 	latest_instance=$(get_instances | tail -n1 | cut -f1 -d' ')
-	echo "current_instance = $latest_instance"
+	echo "latest_instance = $latest_instance"
 }
 
 function has_any_instance() {
@@ -61,7 +61,7 @@ if [[ -n "$PRIVATE" ]]; then
 	fi
 
 	if [[ -n "$NEW" ]]; then
-		firefox -private-window
+		firefox -private-window &
 
 		sleep 0.4
 		timeout=20
@@ -73,7 +73,7 @@ if [[ -n "$PRIVATE" ]]; then
 	fi
 
 	if [[ -n "${1+x}" ]]; then
-		firefox -private-window "$1"
+		firefox -private-window "$1" &
 	fi
 else
 	if [[ -n "$THISWS" ]] && [[ -z $current_instance ]]; then
@@ -81,13 +81,24 @@ else
 	fi
 
 	if [[ -n "$NEW" ]]; then
-		firefox -new-window ${1+"$1"}
+		firefox -new-window ${1+"$1"} &
 	else
-		firefox ${1+"$1"}
+		firefox ${1+"$1"} &
 	fi
 fi
 
 get_latest_instance
+
+sleep 0.4
+timeout=20
+prev="$latest_instance"
+while [[ "$latest_instance" == "$prev" ]] && (( timeout > 0 )); do
+	sleep 0.4
+	get_latest_instance
+	timeout=$((timeout-1))
+done
+
+sleep 0.4
 
 if [[ -n "$NEW" ]]; then
 	wmctrl -i -r "$latest_instance" -b add,maximized_vert
